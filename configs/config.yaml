@@ -1,0 +1,116 @@
+# ──────────────────────────────────────────────────────────────
+# AVAL — Configuración central del proyecto
+# Toda constante que cambia entre entornos vive aquí, no en código.
+# ──────────────────────────────────────────────────────────────
+
+project:
+  name: aval-credit-scoring
+  version: "0.1.0"
+  description: "Scoring crediticio alternativo para usuarios thin-file en LATAM"
+
+data:
+  raw_dir: data/raw
+  processed_dir: data/processed
+  splits_dir: data/splits
+  
+  home_credit:
+    application_train: application_train.csv
+    application_test: application_test.csv
+    bureau: bureau.csv
+    bureau_balance: bureau_balance.csv
+    previous_application: previous_application.csv
+    pos_cash_balance: POS_CASH_balance.csv
+    installments_payments: installments_payments.csv
+    credit_card_balance: credit_card_balance.csv
+
+  target_column: TARGET
+  id_column: SK_ID_CURR
+
+modeling:
+  random_state: 42
+  
+  splits:
+    test_size: 0.20
+    val_size: 0.15
+    stratify: true
+  
+  # Rango sano para thin-file según benchmarks del sector
+  expected_auc_range: [0.70, 0.84]
+  leakage_alert_threshold: 0.90  # AUC > esto → auditar antes de celebrar
+
+  baselines:
+    - logistic_regression
+    - xgboost
+    - lightgbm
+    - catboost
+  
+  primary_model: xgboost
+  
+  metrics:  # El área de riesgo habla estos idiomas, no accuracy
+    - auc_roc
+    - ks_statistic
+    - gini_coefficient
+    - calibration_brier
+  
+  thresholds:
+    ks_minimum: 0.30  # Por debajo de esto, el modelo no separa bien
+    auc_target: 0.79
+
+  optuna:
+    n_trials: 100
+    n_jobs: -1
+    direction: maximize
+    metric: auc_roc
+    timeout_seconds: 3600
+
+reject_inference:
+  # Técnica elegida en Día 6 — a implementar en Semana 2
+  # Opciones: reweighting | parcelling | fuzzy_augmentation
+  technique: reweighting
+  assumption: "MAR"  # Missing At Random — declarado explícitamente
+
+fairness:
+  protected_groups:
+    - gender_proxy  # Columna CODE_GENDER si disponible
+    - region_proxy  # REGION_RATING_CLIENT como proxy socioeconómico
+  max_disparate_impact_ratio: 0.80  # Umbral mínimo regulatorio
+
+explainability:
+  shap:
+    n_samples_background: 100
+    max_features_display: 15
+  
+  scorecard:
+    bins: 10
+    woe_smoothing: 0.5
+
+agent:
+  model: "gpt-5.4-mini"  # Intercambiable. La lógica no depende de este modelo.
+  reasoning_effort: "none"   # El LLM redacta, no razona. None = mínima latencia, mínimo costo.
+  max_tokens: 800
+  # El LLM recibe SHAP values del caso específico.
+  # Prohibido generalizar. Prohibido inventar razones.
+  # Si en el Día 14 LangChain requiere temperature explícita, usar temperature=1 con reasoning_effort=none.
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  workers: 1
+  reload: false
+  model_path: models/xgboost-calibrated-final.pkl
+  pipeline_path: models/feature-pipeline-alternative-signals.pkl
+
+deployment:
+  docker:
+    image_name: aval-credit-scoring
+    tag: latest
+  
+  vps:
+    port_api: 8000
+    port_dashboard: 8501
+    https: true
+
+logging:
+  level: INFO
+  format: "%(asctime)s | %(name)s | %(levelname)s | %(message)s"
+  audit_log_path: logs/audit_decisions.jsonl  # Cada decisión → registro inmutable

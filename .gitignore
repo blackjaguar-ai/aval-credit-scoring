@@ -1,0 +1,60 @@
+# ──────────────────────────────────────────
+# AVAL — .gitignore
+# ──────────────────────────────────────────
+
+# Entorno y secretos — NUNCA en el repo
+.env
+*.env.*
+!.env.example
+
+# Data — pesada, versionada aparte (DVC o local)
+data/raw/
+data/processed/
+data/splits/
+
+# Artefactos de modelos entrenados — versionados por MLflow
+models/*.pkl
+models/*.json
+models/*.ubj
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Entorno virtual
+venv/
+.venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Testing y coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# MLflow
+mlruns/
+mlartifacts/
+
+# Logs
+logs/
+*.log
+*.jsonl
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# macOS
+.DS_Store
