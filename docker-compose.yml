@@ -45,8 +45,7 @@ services:
     env_file:
       - .env
     depends_on:
-      aval-api:
-        condition: service_healthy
+      - aval-api
 
 networks:
   default:
